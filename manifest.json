@@ -1,0 +1,12 @@
+{
+    "display_name": "AccuWeather",
+    "loading_order": 900,
+    "requires": [],
+    "optional": [],
+    "js": "index.js",
+    "css": "",
+    "author": "Cohee1207",
+    "version": "1.0.0",
+    "homePage": "https://github.com/Cohee1207/Extension-AccuWeather",
+    "auto_update": true
+}
