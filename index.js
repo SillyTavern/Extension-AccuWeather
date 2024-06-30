@@ -3,9 +3,7 @@ import { isTrueBoolean, isFalseBoolean } from '../../../utils.js';
 import { saveSettingsDebounced } from '../../../../script.js';
 import { SlashCommand } from '../../../slash-commands/SlashCommand.js';
 import { ARGUMENT_TYPE, SlashCommandArgument, SlashCommandNamedArgument } from '../../../slash-commands/SlashCommandArgument.js';
-import { SlashCommandClosure } from '../../../slash-commands/SlashCommandClosure.js';
 import { SlashCommandParser } from '../../../slash-commands/SlashCommandParser.js';
-import { SlashCommandScope } from '../../../slash-commands/SlashCommandScope.js';
 
 /**
  * @typedef {Object} WeatherData
@@ -270,11 +268,11 @@ const defaultSettings = {
 
 async function getWeatherCallback(args, location) {
     if (!extension_settings.accuweather.apiKey) {
-        throw new Error(`No AccuWeather API key set.`);
+        throw new Error('No AccuWeather API key set.');
     }
 
     if (!location && !extension_settings.accuweather.preferredLocation) {
-        throw new Error(`No location provided, and no preferred location set.`);
+        throw new Error('No location provided, and no preferred location set.');
     }
 
     const currentLocation = location || extension_settings.accuweather.preferredLocation;
