@@ -16,7 +16,7 @@ It's free for 50 calls per day.
 Install using SillyTavern's extension installer from the URL:
 
 ```txt
-https://github.com/Cohee1207/Extension-AccuWeather
+https://github.com/SillyTavern/Extension-AccuWeather
 ```
 
 ## Usage
