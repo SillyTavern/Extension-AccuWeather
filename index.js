@@ -383,7 +383,90 @@ async function getWeatherForLocation(locationKey) {
     return data[0];
 }
 
-jQuery(() => {
+async function registerFunctionTools() {
+    try {
+        const getWeatherSchema = Object.freeze({
+            $schema: 'http://json-schema.org/draft-04/schema#',
+            type: 'object',
+            properties: {
+                location: {
+                    type: 'string',
+                    description: 'The location to get the weather for, e.g. "Bucharest, Romania" or "Los Angeles, CA".',
+                },
+                units: {
+                    type: 'string',
+                    description: 'The units to use for the weather data. Use "metric" or "imperial" depending on the location.',
+                },
+                condition: {
+                    type: 'boolean',
+                    description: 'The result should include the weather condition, e.g. "Clear".',
+                },
+                temperature: {
+                    type: 'boolean',
+                    description: 'The result should include the actual temperature.',
+                },
+                feelslike: {
+                    type: 'boolean',
+                    description: 'The result should include the "feels like" temperature.',
+                },
+                wind: {
+                    type: 'boolean',
+                    description: 'The result should include the wind speed and direction.',
+                },
+                humidity: {
+                    type: 'boolean',
+                    description: 'The result should include the relative humidity.',
+                },
+                pressure: {
+                    type: 'boolean',
+                    description: 'The result should include the pressure.',
+                },
+                visibility: {
+                    type: 'boolean',
+                    description: 'The result should include the visibility.',
+                },
+                uvindex: {
+                    type: 'boolean',
+                    description: 'The result should include the UV index.',
+                },
+                precipitation: {
+                    type: 'boolean',
+                    description: 'The result should include the precipitation.',
+                },
+            },
+            required: [
+                'location',
+                'units',
+                'condition',
+                'temperature',
+            ],
+        });
+        const module = await import('../../../tool-calling.js');
+        module.ToolManager.registerFunctionTool(
+            'GetWeather',
+            'Get the weather for a specific location. Call when the user is asking for weather conditions.',
+            getWeatherSchema,
+            async (args) => {
+                if (!extension_settings.accuweather.apiKey) throw new Error('No AccuWeather API key set.');
+                if (!args) throw new Error('No arguments provided');
+                Object.keys(args).forEach((key) => args[key] = String(args[key]));
+                const location = args.location || extension_settings.accuweather.preferredLocation;
+                if (!location && !extension_settings.accuweather.preferredLocation) {
+                    throw new Error('No location provided, and no preferred location set.');
+                }
+                const locationKey = await getLocationKey(location);
+                const weatherData = await getWeatherForLocation(locationKey);
+                const parsedWeather = parseWeatherData(weatherData, args);
+                return parsedWeather;
+            },
+        );
+
+    } catch (err) {
+        console.error('AccuWeather function tools failed to register:', err);
+    }
+}
+
+jQuery(async () => {
     if (extension_settings.accuweather === undefined) {
         extension_settings.accuweather = defaultSettings;
     }
@@ -528,4 +611,6 @@ jQuery(() => {
         callback: getWeatherCallback,
         returns: 'a string containing the weather information',
     }));
+
+    await registerFunctionTools();
 });
