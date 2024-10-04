@@ -328,6 +328,25 @@ function parseWeatherData(weatherData, args) {
     return parts.join(', ');
 }
 
+function parseWeatherForecastData(weatherData) {
+    const start = new Date(weatherData.DailyForecasts[0].Date);
+    const end = new Date(weatherData.DailyForecasts[4].Date);
+    const summary = weatherData.Headline.Text;
+    const parts = [];
+
+    parts.push(`Weather forecast for ${start.toLocaleDateString()}-${end.toLocaleDateString()}: ${summary}`);
+
+    for (const day of weatherData.DailyForecasts) {
+        const dayDate = new Date(day.Date);
+        const daySummary = day.Day.LongPhrase;
+        const nightSummary = day.Night.LongPhrase;
+        const temperature = `${day.Temperature.Minimum.Value}°${day.Temperature.Minimum.Unit} - ${day.Temperature.Maximum.Value}°${day.Temperature.Maximum.Unit}`;
+        parts.push(`${dayDate.toLocaleDateString()}: ${daySummary} during the day, ${nightSummary} at night. Temperature: ${temperature}`);
+    }
+
+    return parts.join('\n');
+}
+
 async function getLocationKey(location) {
     if (locationCache.has(location)) {
         return locationCache.get(location);
@@ -383,8 +402,38 @@ async function getWeatherForLocation(locationKey) {
     return data[0];
 }
 
-async function registerFunctionTools() {
+async function getForecastForLocation(locationKey, units) {
+    const baseUrl = new URL(`http://dataservice.accuweather.com/forecasts/v1/daily/5day/${locationKey}`);
+    const params = new URLSearchParams();
+    params.append('apikey', extension_settings.accuweather.apiKey);
+    params.append('details', 'true');
+    params.append('metric', units === 'metric');
+    baseUrl.search = params.toString();
+
+    const response = await fetch(baseUrl);
+
+    if (!response.ok) {
+        throw new Error(`Failed to get forecast for location key "${locationKey}"`);
+    }
+
+    const data = await response.json();
+
+    if (!data || typeof data !== 'object') {
+        throw new Error(`No forecast data found for location key "${locationKey}"`);
+    }
+
+    return data;
+}
+
+function registerFunctionTools() {
     try {
+        const { registerFunctionTool } = SillyTavern.getContext();
+
+        if (!registerFunctionTool) {
+            console.debug('[AccuWeather] Tool calling is not supported.');
+            return;
+        }
+
         const getWeatherSchema = Object.freeze({
             $schema: 'http://json-schema.org/draft-04/schema#',
             type: 'object',
@@ -441,12 +490,32 @@ async function registerFunctionTools() {
                 'temperature',
             ],
         });
-        const module = await import('../../../tool-calling.js');
-        module.ToolManager.registerFunctionTool(
-            'GetWeather',
-            'Get the weather for a specific location. Call when the user is asking for weather conditions.',
-            getWeatherSchema,
-            async (args) => {
+
+        const getWeatherForecastSchema = Object.freeze({
+            $schema: 'http://json-schema.org/draft-04/schema#',
+            type: 'object',
+            properties: {
+                location: {
+                    type: 'string',
+                    description: 'The location to get the weather for, e.g. "Bucharest, Romania" or "Los Angeles, CA".',
+                },
+                units: {
+                    type: 'string',
+                    description: 'The units to use for the weather data. Use "metric" or "imperial" depending on the location.',
+                },
+            },
+            required: [
+                'location',
+                'units',
+            ],
+        });
+
+        registerFunctionTool({
+            name: 'GetCurrentWeather',
+            displayName: 'Get Weather',
+            description: 'Get the weather for a specific location. Call when the user is asking for current weather conditions.',
+            parameters: getWeatherSchema,
+            action: async (args) => {
                 if (!extension_settings.accuweather.apiKey) throw new Error('No AccuWeather API key set.');
                 if (!args) throw new Error('No arguments provided');
                 Object.keys(args).forEach((key) => args[key] = String(args[key]));
@@ -459,8 +528,30 @@ async function registerFunctionTools() {
                 const parsedWeather = parseWeatherData(weatherData, args);
                 return parsedWeather;
             },
-        );
+            formatMessage: (args) => args?.location ? `Getting the weather for ${args.location}...` : '',
+        });
 
+        registerFunctionTool({
+            name: 'GetWeatherForecast',
+            displayName: 'Get Weather Forecast',
+            description: 'Get the daily weather forecasts for the next 5 days for a specific location. Call when the user is asking for the weather forecast.',
+            parameters: getWeatherForecastSchema,
+            action: async (args) => {
+                if (!extension_settings.accuweather.apiKey) throw new Error('No AccuWeather API key set.');
+                if (!args) throw new Error('No arguments provided');
+                Object.keys(args).forEach((key) => args[key] = String(args[key]));
+                const location = args.location || extension_settings.accuweather.preferredLocation;
+                if (!location && !extension_settings.accuweather.preferredLocation) {
+                    throw new Error('No location provided, and no preferred location set.');
+                }
+                const units = args.units || extension_settings.accuweather.units;
+                const locationKey = await getLocationKey(location);
+                const weatherData = await getForecastForLocation(locationKey, units);
+                const parsedWeather = parseWeatherForecastData(weatherData, args);
+                return parsedWeather;
+            },
+            formatMessage: (args) => args?.location ? `Getting the weather forecast for ${args.location}...` : '',
+        });
     } catch (err) {
         console.error('AccuWeather function tools failed to register:', err);
     }
@@ -514,6 +605,45 @@ jQuery(async () => {
         extension_settings.accuweather.preferredLocation = String($(this).val());
         saveSettingsDebounced();
     });
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'forecast',
+        helpString: 'Get the weather forecast for the next 5 days for a location. Uses a preferred location if none is provided.',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({
+                description: 'location to get the weather forecast for',
+                isRequired: false,
+                acceptsMultiple: false,
+                typeList: ARGUMENT_TYPE.STRING,
+            }),
+        ],
+        namedArgumentList: [
+            SlashCommandNamedArgument.fromProps({
+                name: 'units',
+                description: 'The units to use for the weather data. Uses a preferred unit if none is provided.',
+                typeList: ARGUMENT_TYPE.STRING,
+                isRequired: false,
+                acceptsMultiple: false,
+                enumList: ['metric', 'imperial'],
+            }),
+        ],
+        callback: async (args, location) => {
+            if (!extension_settings.accuweather.apiKey) {
+                throw new Error('No AccuWeather API key set.');
+            }
+
+            if (!location && !extension_settings.accuweather.preferredLocation) {
+                throw new Error('No location provided, and no preferred location set.');
+            }
+
+            const currentLocation = location || extension_settings.accuweather.preferredLocation;
+            const locationKey = await getLocationKey(currentLocation);
+            const weatherData = await getForecastForLocation(locationKey, args.units || extension_settings.accuweather.units);
+            const parsedWeather = parseWeatherForecastData(weatherData);
+            return parsedWeather;
+        },
+        returns: 'a string containing the weather forecast information',
+    }));
 
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'weather',
@@ -612,5 +742,5 @@ jQuery(async () => {
         returns: 'a string containing the weather information',
     }));
 
-    await registerFunctionTools();
+    registerFunctionTools();
 });
