@@ -21,6 +21,8 @@ https://github.com/SillyTavern/Extension-AccuWeather
 
 ## Usage
 
+### Get current weather
+
 `/weather <location>`
 
 Available arguments:
@@ -36,10 +38,22 @@ Available arguments:
 - `uvindex` - the result should include the UV index. The default is `false`.
 - `precipitation` - the result should include the precipitation. The default is `false`.
 
-## Example
+### Get weather forecast
+
+`/forecast <location>`
+
+Available arguments:
+
+- `units` - `metric` or `imperial`
+
+## Examples
 
 ```stscript
 /weather units=metric condition=true temperature=true feelslike=true humidity=true wind=true pressure=true visibility=true uvindex=true precipitation=true London, UK
+```
+
+```stscript
+/forecast units=imperial Tampa, FL
 ```
 
 ## License
