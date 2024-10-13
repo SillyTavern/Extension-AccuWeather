@@ -427,10 +427,16 @@ async function getForecastForLocation(locationKey, units) {
 
 function registerFunctionTools() {
     try {
-        const { registerFunctionTool } = SillyTavern.getContext();
+        const { registerFunctionTool, unregisterFunctionTool } = SillyTavern.getContext();
 
-        if (!registerFunctionTool) {
+        if (!registerFunctionTool || !unregisterFunctionTool) {
             console.debug('[AccuWeather] Tool calling is not supported.');
+            return;
+        }
+
+        if (!extension_settings.accuweather.functionTool) {
+            unregisterFunctionTool('GetCurrentWeather');
+            unregisterFunctionTool('GetWeatherForecast');
             return;
         }
 
@@ -591,6 +597,15 @@ jQuery(async () => {
                         <option value="imperial">Imperial</option>
                     </select>
                 </div>
+                <div>
+                    <label class="checkbox_label for="accuweather_function_tool">
+                        <input id="accuweather_function_tool" type="checkbox" />
+                        <span>Use function tool</span>
+                        <a rel="noopener" href="https://docs.sillytavern.app/for-contributors/function-calling/" class="notes-link" target="_blank">
+                            <span class="note-link-span">?</span>
+                        </a>
+                    </label>
+                </div>
             </div>
         </div>
     </div>`;
@@ -604,6 +619,17 @@ jQuery(async () => {
     $('#accuweather_preferred_location').val(extension_settings.accuweather.preferredLocation).on('input', function () {
         extension_settings.accuweather.preferredLocation = String($(this).val());
         saveSettingsDebounced();
+    });
+
+    $('#accuweather_units').val(extension_settings.accuweather.units).on('change', function () {
+        extension_settings.accuweather.units = String($(this).val());
+        saveSettingsDebounced();
+    });
+
+    $('#accuweather_function_tool').prop('checked', extension_settings.accuweather.functionTool).on('change', function () {
+        extension_settings.accuweather.functionTool = !!$(this).prop('checked');
+        saveSettingsDebounced();
+        registerFunctionTools();
     });
 
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({

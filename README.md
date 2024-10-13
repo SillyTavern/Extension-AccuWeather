@@ -21,6 +21,14 @@ https://github.com/SillyTavern/Extension-AccuWeather
 
 ## Usage
 
+### Via the function tool
+
+The function tool needs to be enabled in the extension settings first and used with a compatible backend.
+
+If all requirements are met, just ask the model about the current weather or a forecast for your location.
+
+Docs: [Function Calling](https://docs.sillytavern.app/for-contributors/function-calling/)
+
 ### Get current weather
 
 `/weather <location>`
