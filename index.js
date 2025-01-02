@@ -609,7 +609,8 @@ jQuery(async () => {
             </div>
         </div>
     </div>`;
-    $('#extensions_settings2').append(html);
+    const extensionContainer = document.getElementById('accuweather_container') ?? document.getElementById('extensions_settings2');
+    $(extensionContainer).append(html);
 
     $('#accuweather_api_key').val(extension_settings.accuweather.apiKey).on('input', function () {
         extension_settings.accuweather.apiKey = String($(this).val());
