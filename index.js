@@ -485,6 +485,7 @@ function parseWttrInForecastData(data, units) {
         const dayDate = new Date(day.date);
         const tempMin = isImperial ? `${day.mintempF}°F` : `${day.mintempC}°C`;
         const tempMax = isImperial ? `${day.maxtempF}°F` : `${day.maxtempC}°C`;
+        // wttr.in hourly[4] = noon (12:00), hourly[0] = midnight (00:00)
         const dayDesc = day.hourly && day.hourly[4] ? day.hourly[4].weatherDesc[0].value.trim() : '';
         const nightDesc = day.hourly && day.hourly[0] ? day.hourly[0].weatherDesc[0].value.trim() : '';
         parts.push(`${dayDate.toLocaleDateString()}: ${dayDesc} during the day, ${nightDesc} at night. Temperature: ${tempMin} - ${tempMax}`);
