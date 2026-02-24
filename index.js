@@ -485,9 +485,9 @@ function parseWttrInForecastData(data, units) {
         const dayDate = new Date(day.date);
         const tempMin = isImperial ? `${day.mintempF}°F` : `${day.mintempC}°C`;
         const tempMax = isImperial ? `${day.maxtempF}°F` : `${day.maxtempC}°C`;
-        // wttr.in hourly[4] = noon (12:00), hourly[0] = midnight (00:00)
+        // wttr.in hourly entries are 3-hour intervals: [0]=00:00, [4]=12:00, [7]=21:00
         const dayDesc = day.hourly && day.hourly[4] ? day.hourly[4].weatherDesc[0].value.trim() : '';
-        const nightDesc = day.hourly && day.hourly[0] ? day.hourly[0].weatherDesc[0].value.trim() : '';
+        const nightDesc = day.hourly && day.hourly[7] ? day.hourly[7].weatherDesc[0].value.trim() : '';
         parts.push(`${dayDate.toLocaleDateString()}: ${dayDesc} during the day, ${nightDesc} at night. Temperature: ${tempMin} - ${tempMax}`);
     }
     return parts.join('\n');
@@ -568,7 +568,9 @@ function parseOWMWeatherData(data, args) {
     if (isTrueBoolean(args.precipitation)) {
         const rain = current.rain ? current.rain['1h'] || 0 : 0;
         const snow = current.snow ? current.snow['1h'] || 0 : 0;
-        parts.push(`Precipitation: ${(rain + snow).toFixed(1)} mm`);
+        const totalPrecip = rain + snow;
+        const precipStr = isImperial ? `${(totalPrecip / 25.4).toFixed(2)} in` : `${totalPrecip.toFixed(1)} mm`;
+        parts.push(`Precipitation: ${precipStr}`);
     }
     return parts.join(', ');
 }
