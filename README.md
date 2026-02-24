@@ -28,6 +28,8 @@ No API key required.
 
 The free tier includes 1,000 calls per day.
 
+> **Note:** The API key may take up to ~2 hours to become active after registration and email confirmation.
+
 ## Installation
 
 Install using SillyTavern's extension installer from the URL:
