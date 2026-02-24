@@ -261,25 +261,18 @@ import { SlashCommandParser } from '../../../slash-commands/SlashCommandParser.j
 const locationCache = new Map();
 
 const defaultSettings = {
+    provider: 'accuweather',
     apiKey: '',
+    openWeatherMapApiKey: '',
     preferredLocation: '',
     units: 'metric',
 };
 
 async function getWeatherCallback(args, location) {
-    if (!extension_settings.accuweather.apiKey) {
-        throw new Error('No AccuWeather API key set.');
-    }
-
     if (!location && !extension_settings.accuweather.preferredLocation) {
         throw new Error('No location provided, and no preferred location set.');
     }
-
-    const currentLocation = location || extension_settings.accuweather.preferredLocation;
-    const locationKey = await getLocationKey(currentLocation);
-    const weatherData = await getWeatherForLocation(locationKey);
-    const parsedWeather = parseWeatherData(weatherData, args);
-    return parsedWeather;
+    return await getWeatherByProvider(location, args);
 }
 
 function parseWeatherData(weatherData, args) {
@@ -425,6 +418,277 @@ async function getForecastForLocation(locationKey, units) {
     return data;
 }
 
+// --- wttr.in provider ---
+
+async function getWttrInWeather(location) {
+    const url = new URL(`https://wttr.in/${encodeURIComponent(location)}`);
+    url.searchParams.append('format', 'j1');
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Failed to get weather from wttr.in for "${location}"`);
+    const data = await response.json();
+    if (!data || !data.current_condition || data.current_condition.length === 0) {
+        throw new Error(`No weather data found for "${location}"`);
+    }
+    return data;
+}
+
+function parseWttrInWeatherData(data, args) {
+    const current = data.current_condition[0];
+    const parts = [];
+    const currentUnits = args.units || extension_settings.accuweather.units;
+    const isImperial = String(currentUnits).trim().toLowerCase() === 'imperial';
+
+    if (!isFalseBoolean(args.condition)) {
+        parts.push(current.weatherDesc[0].value.trim());
+    }
+    if (!isFalseBoolean(args.temperature)) {
+        let temp = isImperial ? `${current.temp_F}°F` : `${current.temp_C}°C`;
+        if (isTrueBoolean(args.feelslike)) {
+            temp += isImperial ? ` (feels like ${current.FeelsLikeF}°F)` : ` (feels like ${current.FeelsLikeC}°C)`;
+        }
+        parts.push(temp);
+    }
+    if (isTrueBoolean(args.wind)) {
+        const speed = isImperial ? `${current.windspeedMiles} mph` : `${current.windspeedKmph} km/h`;
+        parts.push(`Wind: ${speed} ${current.winddir16Point}`);
+    }
+    if (isTrueBoolean(args.humidity)) {
+        parts.push(`Humidity: ${current.humidity}%`);
+    }
+    if (isTrueBoolean(args.pressure)) {
+        const pressure = isImperial ? `${current.pressureInches} inHg` : `${current.pressure} mb`;
+        parts.push(`Pressure: ${pressure}`);
+    }
+    if (isTrueBoolean(args.visibility)) {
+        const vis = isImperial ? `${current.visibilityMiles} miles` : `${current.visibility} km`;
+        parts.push(`Visibility: ${vis}`);
+    }
+    if (isTrueBoolean(args.uvindex)) {
+        parts.push(`UV Index: ${current.uvIndex}`);
+    }
+    if (isTrueBoolean(args.precipitation)) {
+        const precip = isImperial ? `${current.precipInches} in` : `${current.precipMM} mm`;
+        parts.push(`Precipitation: ${precip}`);
+    }
+    return parts.join(', ');
+}
+
+function parseWttrInForecastData(data, units) {
+    const days = data.weather;
+    if (!days || days.length === 0) throw new Error('No forecast data available');
+    const isImperial = String(units).trim().toLowerCase() === 'imperial';
+    const start = new Date(days[0].date);
+    const end = new Date(days[days.length - 1].date);
+    const parts = [];
+    parts.push(`Weather forecast for ${start.toLocaleDateString()}-${end.toLocaleDateString()}:`);
+    for (const day of days) {
+        const dayDate = new Date(day.date);
+        const tempMin = isImperial ? `${day.mintempF}°F` : `${day.mintempC}°C`;
+        const tempMax = isImperial ? `${day.maxtempF}°F` : `${day.maxtempC}°C`;
+        // wttr.in hourly entries are 3-hour intervals: [0]=00:00, [4]=12:00, [7]=21:00
+        const dayDesc = day.hourly && day.hourly[4] ? day.hourly[4].weatherDesc[0].value.trim() : '';
+        const nightDesc = day.hourly && day.hourly[7] ? day.hourly[7].weatherDesc[0].value.trim() : '';
+        parts.push(`${dayDate.toLocaleDateString()}: ${dayDesc} during the day, ${nightDesc} at night. Temperature: ${tempMin} - ${tempMax}`);
+    }
+    return parts.join('\n');
+}
+
+// --- OpenWeatherMap provider ---
+
+const owmGeoCache = new Map();
+
+function degreesToDirection(degrees) {
+    const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+    const index = Math.round(degrees / 22.5) % 16;
+    return directions[index];
+}
+
+async function getOWMGeocode(location) {
+    if (owmGeoCache.has(location)) return owmGeoCache.get(location);
+    const url = new URL('https://api.openweathermap.org/geo/1.0/direct');
+    url.searchParams.append('q', location);
+    url.searchParams.append('limit', '1');
+    url.searchParams.append('appid', extension_settings.accuweather.openWeatherMapApiKey);
+    const response = await fetch(url);
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error?.message || `Failed to geocode "${location}"`);
+    }
+    const data = await response.json();
+    if (!Array.isArray(data) || data.length === 0) throw new Error(`No location found for "${location}"`);
+    const result = { lat: data[0].lat, lon: data[0].lon };
+    owmGeoCache.set(location, result);
+    return result;
+}
+
+async function getOWMCurrentWeather(location, units) {
+    const { lat, lon } = await getOWMGeocode(location);
+    const url = new URL('https://api.openweathermap.org/data/2.5/weather');
+    url.searchParams.append('lat', lat);
+    url.searchParams.append('lon', lon);
+    url.searchParams.append('appid', extension_settings.accuweather.openWeatherMapApiKey);
+    url.searchParams.append('units', units);
+    const response = await fetch(url);
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error?.message || 'Failed to get weather from OpenWeatherMap');
+    }
+    return await response.json();
+}
+
+async function getOWMForecast(location, units) {
+    const { lat, lon } = await getOWMGeocode(location);
+    const url = new URL('https://api.openweathermap.org/data/2.5/forecast');
+    url.searchParams.append('lat', lat);
+    url.searchParams.append('lon', lon);
+    url.searchParams.append('appid', extension_settings.accuweather.openWeatherMapApiKey);
+    url.searchParams.append('units', units);
+    const response = await fetch(url);
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error?.message || 'Failed to get forecast from OpenWeatherMap');
+    }
+    return await response.json();
+}
+
+function parseOWMWeatherData(data, args) {
+    const parts = [];
+    const currentUnits = args.units || extension_settings.accuweather.units;
+    const isImperial = String(currentUnits).trim().toLowerCase() === 'imperial';
+    const tempUnit = isImperial ? 'F' : 'C';
+    const speedUnit = isImperial ? 'mph' : 'm/s';
+
+    if (!isFalseBoolean(args.condition)) {
+        parts.push(data.weather[0].description);
+    }
+    if (!isFalseBoolean(args.temperature)) {
+        let temp = `${Math.round(data.main.temp)}°${tempUnit}`;
+        if (isTrueBoolean(args.feelslike)) {
+            temp += ` (feels like ${Math.round(data.main.feels_like)}°${tempUnit})`;
+        }
+        parts.push(temp);
+    }
+    if (isTrueBoolean(args.wind)) {
+        parts.push(`Wind: ${data.wind.speed} ${speedUnit} ${degreesToDirection(data.wind.deg)}`);
+    }
+    if (isTrueBoolean(args.humidity)) {
+        parts.push(`Humidity: ${data.main.humidity}%`);
+    }
+    if (isTrueBoolean(args.pressure)) {
+        parts.push(`Pressure: ${data.main.pressure} hPa`);
+    }
+    if (isTrueBoolean(args.visibility)) {
+        const vis = isImperial ? `${(data.visibility / 1609.34).toFixed(1)} miles` : `${(data.visibility / 1000).toFixed(1)} km`;
+        parts.push(`Visibility: ${vis}`);
+    }
+    if (isTrueBoolean(args.precipitation)) {
+        const rain = data.rain ? data.rain['1h'] || 0 : 0;
+        const snow = data.snow ? data.snow['1h'] || 0 : 0;
+        const totalPrecip = rain + snow;
+        const precipStr = isImperial ? `${(totalPrecip / 25.4).toFixed(2)} in` : `${totalPrecip.toFixed(1)} mm`;
+        parts.push(`Precipitation: ${precipStr}`);
+    }
+    return parts.join(', ');
+}
+
+function parseOWMForecastData(data, units) {
+    const list = data.list;
+    if (!list || list.length === 0) throw new Error('No forecast data available');
+    const isImperial = String(units).trim().toLowerCase() === 'imperial';
+    const tempUnit = isImperial ? 'F' : 'C';
+
+    // Group 3-hour entries by date
+    const dailyMap = new Map();
+    for (const entry of list) {
+        const date = new Date(entry.dt * 1000).toLocaleDateString();
+        if (!dailyMap.has(date)) {
+            dailyMap.set(date, { dt: entry.dt, temps: [], descriptions: [] });
+        }
+        const day = dailyMap.get(date);
+        day.temps.push(entry.main.temp_min, entry.main.temp_max);
+        day.descriptions.push(entry.weather[0].description);
+    }
+
+    const days = Array.from(dailyMap.values()).slice(0, 5);
+    const start = new Date(days[0].dt * 1000);
+    const end = new Date(days[days.length - 1].dt * 1000);
+    const parts = [];
+    parts.push(`Weather forecast for ${start.toLocaleDateString()}-${end.toLocaleDateString()}:`);
+    for (const day of days) {
+        const dayDate = new Date(day.dt * 1000);
+        const minTemp = Math.round(Math.min(...day.temps));
+        const maxTemp = Math.round(Math.max(...day.temps));
+        // Use the most common description for the day
+        const descCounts = {};
+        for (const d of day.descriptions) {
+            descCounts[d] = (descCounts[d] || 0) + 1;
+        }
+        const description = Object.entries(descCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'No data';
+        parts.push(`${dayDate.toLocaleDateString()}: ${description}. Temperature: ${minTemp}°${tempUnit} - ${maxTemp}°${tempUnit}`);
+    }
+    return parts.join('\n');
+}
+
+// --- Provider routing ---
+
+async function getWeatherByProvider(location, args) {
+    const provider = extension_settings.accuweather.provider || 'accuweather';
+    const currentLocation = location || extension_settings.accuweather.preferredLocation;
+    const units = args.units || extension_settings.accuweather.units;
+
+    switch (provider) {
+        case 'wttr.in': {
+            const data = await getWttrInWeather(currentLocation);
+            return parseWttrInWeatherData(data, args);
+        }
+        case 'openweathermap': {
+            if (!extension_settings.accuweather.openWeatherMapApiKey) {
+                throw new Error('No OpenWeatherMap API key set.');
+            }
+            const data = await getOWMCurrentWeather(currentLocation, units);
+            return parseOWMWeatherData(data, args);
+        }
+        case 'accuweather':
+        default: {
+            if (!extension_settings.accuweather.apiKey) {
+                throw new Error('No AccuWeather API key set.');
+            }
+            const locationKey = await getLocationKey(currentLocation);
+            const weatherData = await getWeatherForLocation(locationKey);
+            return parseWeatherData(weatherData, args);
+        }
+    }
+}
+
+async function getForecastByProvider(location, units) {
+    const provider = extension_settings.accuweather.provider || 'accuweather';
+    const currentLocation = location || extension_settings.accuweather.preferredLocation;
+    const currentUnits = units || extension_settings.accuweather.units;
+
+    switch (provider) {
+        case 'wttr.in': {
+            const data = await getWttrInWeather(currentLocation);
+            return parseWttrInForecastData(data, currentUnits);
+        }
+        case 'openweathermap': {
+            if (!extension_settings.accuweather.openWeatherMapApiKey) {
+                throw new Error('No OpenWeatherMap API key set.');
+            }
+            const data = await getOWMForecast(currentLocation, currentUnits);
+            return parseOWMForecastData(data, currentUnits);
+        }
+        case 'accuweather':
+        default: {
+            if (!extension_settings.accuweather.apiKey) {
+                throw new Error('No AccuWeather API key set.');
+            }
+            const locationKey = await getLocationKey(currentLocation);
+            const weatherData = await getForecastForLocation(locationKey, currentUnits);
+            return parseWeatherForecastData(weatherData);
+        }
+    }
+}
+
 function registerFunctionTools() {
     try {
         const { registerFunctionTool, unregisterFunctionTool } = SillyTavern.getContext();
@@ -522,17 +786,13 @@ function registerFunctionTools() {
             description: 'Get the weather for a specific location. Call when the user is asking for current weather conditions.',
             parameters: getWeatherSchema,
             action: async (args) => {
-                if (!extension_settings.accuweather.apiKey) throw new Error('No AccuWeather API key set.');
                 if (!args) throw new Error('No arguments provided');
                 Object.keys(args).forEach((key) => args[key] = String(args[key]));
                 const location = args.location || extension_settings.accuweather.preferredLocation;
                 if (!location && !extension_settings.accuweather.preferredLocation) {
                     throw new Error('No location provided, and no preferred location set.');
                 }
-                const locationKey = await getLocationKey(location);
-                const weatherData = await getWeatherForLocation(locationKey);
-                const parsedWeather = parseWeatherData(weatherData, args);
-                return parsedWeather;
+                return await getWeatherByProvider(location, args);
             },
             formatMessage: (args) => args?.location ? `Getting the weather for ${args.location}...` : '',
         });
@@ -543,7 +803,6 @@ function registerFunctionTools() {
             description: 'Get the daily weather forecasts for the next 5 days for a specific location. Call when the user is asking for the weather forecast.',
             parameters: getWeatherForecastSchema,
             action: async (args) => {
-                if (!extension_settings.accuweather.apiKey) throw new Error('No AccuWeather API key set.');
                 if (!args) throw new Error('No arguments provided');
                 Object.keys(args).forEach((key) => args[key] = String(args[key]));
                 const location = args.location || extension_settings.accuweather.preferredLocation;
@@ -551,10 +810,7 @@ function registerFunctionTools() {
                     throw new Error('No location provided, and no preferred location set.');
                 }
                 const units = args.units || extension_settings.accuweather.units;
-                const locationKey = await getLocationKey(location);
-                const weatherData = await getForecastForLocation(locationKey, units);
-                const parsedWeather = parseWeatherForecastData(weatherData, args);
-                return parsedWeather;
+                return await getForecastByProvider(location, units);
             },
             formatMessage: (args) => args?.location ? `Getting the weather forecast for ${args.location}...` : '',
         });
@@ -578,13 +834,25 @@ jQuery(async () => {
     <div class="accuweather_settings">
         <div class="inline-drawer">
             <div class="inline-drawer-toggle inline-drawer-header">
-                <b>AccuWeather</b>
+                <b>Weather</b>
                 <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
             </div>
             <div class="inline-drawer-content">
                 <div>
-                    <label for="accuweather_api_key">API Key</label>
+                    <label for="accuweather_provider">Weather Provider</label>
+                    <select id="accuweather_provider" class="text_pole">
+                        <option value="accuweather">🔐 AccuWeather</option>
+                        <option value="openweathermap">🔐 OpenWeatherMap</option>
+                        <option value="wttr.in">🆓 wttr.in</option>
+                    </select>
+                </div>
+                <div id="accuweather_api_key_block">
+                    <label for="accuweather_api_key">AccuWeather API Key</label>
                     <input id="accuweather_api_key" class="text_pole" type="text" />
+                </div>
+                <div id="openweathermap_api_key_block">
+                    <label for="openweathermap_api_key">OpenWeatherMap API Key</label>
+                    <input id="openweathermap_api_key" class="text_pole" type="text" />
                 </div>
                 <div>
                     <label for="accuweather_preferred_location">Preferred Location</label>
@@ -592,13 +860,13 @@ jQuery(async () => {
                 </div>
                 <div>
                     <label for="accuweather_units">Units</label>
-                    <select id="accuweather_units">
+                    <select id="accuweather_units" class="text_pole">
                         <option value="metric">Metric</option>
                         <option value="imperial">Imperial</option>
                     </select>
                 </div>
                 <div>
-                    <label class="checkbox_label for="accuweather_function_tool">
+                    <label class="checkbox_label" for="accuweather_function_tool">
                         <input id="accuweather_function_tool" type="checkbox" />
                         <span>Use function tool</span>
                         <a rel="noopener" href="https://docs.sillytavern.app/for-contributors/function-calling/" class="notes-link" target="_blank">
@@ -611,6 +879,18 @@ jQuery(async () => {
     </div>`;
     const extensionContainer = document.getElementById('accuweather_container') ?? document.getElementById('extensions_settings2');
     $(extensionContainer).append(html);
+
+    function updateApiKeyVisibility() {
+        const provider = extension_settings.accuweather.provider || 'accuweather';
+        $('#accuweather_api_key_block').toggle(provider === 'accuweather');
+        $('#openweathermap_api_key_block').toggle(provider === 'openweathermap');
+    }
+
+    $('#accuweather_provider').val(extension_settings.accuweather.provider || 'accuweather').on('change', function () {
+        extension_settings.accuweather.provider = String($(this).val());
+        saveSettingsDebounced();
+        updateApiKeyVisibility();
+    });
 
     $('#accuweather_api_key').val(extension_settings.accuweather.apiKey).on('input', function () {
         extension_settings.accuweather.apiKey = String($(this).val());
@@ -632,6 +912,13 @@ jQuery(async () => {
         saveSettingsDebounced();
         registerFunctionTools();
     });
+
+    $('#openweathermap_api_key').val(extension_settings.accuweather.openWeatherMapApiKey).on('input', function () {
+        extension_settings.accuweather.openWeatherMapApiKey = String($(this).val());
+        saveSettingsDebounced();
+    });
+
+    updateApiKeyVisibility();
 
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'forecast',
@@ -655,19 +942,12 @@ jQuery(async () => {
             }),
         ],
         callback: async (args, location) => {
-            if (!extension_settings.accuweather.apiKey) {
-                throw new Error('No AccuWeather API key set.');
-            }
-
             if (!location && !extension_settings.accuweather.preferredLocation) {
                 throw new Error('No location provided, and no preferred location set.');
             }
-
             const currentLocation = location || extension_settings.accuweather.preferredLocation;
-            const locationKey = await getLocationKey(currentLocation);
-            const weatherData = await getForecastForLocation(locationKey, args.units || extension_settings.accuweather.units);
-            const parsedWeather = parseWeatherForecastData(weatherData);
-            return parsedWeather;
+            const units = args.units || extension_settings.accuweather.units;
+            return await getForecastByProvider(currentLocation, units);
         },
         returns: 'a string containing the weather forecast information',
     }));

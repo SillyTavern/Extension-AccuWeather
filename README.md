@@ -1,15 +1,34 @@
-# AccuWeather Slash Command
+# Weather Slash Command
 
 Adds a slash command that returns the current weather for a given location.
 
-Uses the AccuWeather API. Requires a free API key.
+Supports multiple weather API providers:
 
-## Getting API Key
+- **AccuWeather** (default) — Requires a free API key.
+- **wttr.in** — No API key required.
+- **OpenWeatherMap** — Requires a free API key.
+
+## Getting API Keys
+
+### AccuWeather
 
 1. Register on the [AccuWeather developer portal](https://developer.accuweather.com/).
 2. Then create an app and get the API key.
 
 It's free for 50 calls per day.
+
+### wttr.in
+
+No API key required.
+
+### OpenWeatherMap
+
+1. Register on the [OpenWeatherMap website](https://home.openweathermap.org/users/sign_up).
+2. Get the API key from your [account page](https://home.openweathermap.org/api_keys).
+
+The free tier includes 1,000 calls per day.
+
+> **Note:** The API key may take up to ~2 hours to become active after registration and email confirmation.
 
 ## Installation
 
