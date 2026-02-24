@@ -1087,9 +1087,10 @@ jQuery(async () => {
                 return extension_settings.accuweather.provider || 'accuweather';
             }
 
-            const providerKey = Object.keys(WEATHER_PROVIDERS).find(key =>
-                key === input || WEATHER_PROVIDERS[key].toLowerCase() === input.toLowerCase(),
+            const providerEntry = Object.entries(WEATHER_PROVIDERS).find(([key, name]) =>
+                key === input || name.toLowerCase() === input.toLowerCase(),
             );
+            const providerKey = providerEntry?.[0];
 
             if (!providerKey) {
                 throw new Error(`Invalid weather provider: ${input}. Valid options are: ${Object.keys(WEATHER_PROVIDERS).join(', ')}`);
