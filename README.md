@@ -1,4 +1,4 @@
-# Weather Slash Command
+# Weather
 
 Adds a slash command that returns the current weather for a given location.
 
@@ -35,7 +35,7 @@ The free tier includes 1,000 calls per day.
 Install using SillyTavern's extension installer from the URL:
 
 ```txt
-https://github.com/SillyTavern/Extension-AccuWeather
+https://github.com/SillyTavern/Extension-Weather
 ```
 
 ## Usage
