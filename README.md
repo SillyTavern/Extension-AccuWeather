@@ -6,7 +6,7 @@ Supports multiple weather API providers:
 
 - **AccuWeather** (default) — Requires a free API key.
 - **wttr.in** — No API key required.
-- **OpenWeatherMap** (One Call 3 API) — Requires an API key.
+- **OpenWeatherMap** — Requires a free API key.
 
 ## Getting API Keys
 
@@ -24,10 +24,9 @@ No API key required.
 ### OpenWeatherMap
 
 1. Register on the [OpenWeatherMap website](https://home.openweathermap.org/users/sign_up).
-2. Subscribe to the [One Call API 3.0](https://openweathermap.org/api/one-call-3) plan.
-3. Get the API key from your [account page](https://home.openweathermap.org/api_keys).
+2. Get the API key from your [account page](https://home.openweathermap.org/api_keys).
 
-Includes 1,000 calls per day for free.
+The free tier includes 1,000 calls per day.
 
 ## Installation
 
