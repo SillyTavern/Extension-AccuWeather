@@ -860,7 +860,7 @@ jQuery(async () => {
                 </div>
                 <div>
                     <label for="accuweather_units">Units</label>
-                    <select id="accuweather_units">
+                    <select id="accuweather_units" class="text_pole">
                         <option value="metric">Metric</option>
                         <option value="imperial">Imperial</option>
                     </select>
