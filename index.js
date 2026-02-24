@@ -510,7 +510,10 @@ async function getOWMGeocode(location) {
     url.searchParams.append('limit', '1');
     url.searchParams.append('appid', extension_settings.accuweather.openWeatherMapApiKey);
     const response = await fetch(url);
-    if (!response.ok) throw new Error(`Failed to geocode "${location}"`);
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error?.message || `Failed to geocode "${location}"`);
+    }
     const data = await response.json();
     if (!Array.isArray(data) || data.length === 0) throw new Error(`No location found for "${location}"`);
     const result = { lat: data[0].lat, lon: data[0].lon };
@@ -527,7 +530,10 @@ async function getOWMWeather(location, units) {
     url.searchParams.append('units', units);
     url.searchParams.append('exclude', 'minutely,hourly,alerts');
     const response = await fetch(url);
-    if (!response.ok) throw new Error('Failed to get weather from OpenWeatherMap');
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error?.message || 'Failed to get weather from OpenWeatherMap');
+    }
     return await response.json();
 }
 
