@@ -1081,26 +1081,30 @@ jQuery(async () => {
             }),
         ],
         callback: (args, value) => {
-            const provider = value?.toString()?.trim();
+            const input = value?.toString()?.trim();
 
-            if (!provider) {
+            if (!input) {
                 return extension_settings.accuweather.provider || 'accuweather';
             }
 
-            if (!Object.keys(WEATHER_PROVIDERS).includes(provider)) {
-                throw new Error(`Invalid weather provider: ${provider}. Valid options are: ${Object.keys(WEATHER_PROVIDERS).join(', ')}`);
+            const providerKey = Object.keys(WEATHER_PROVIDERS).find(key =>
+                key === input || WEATHER_PROVIDERS[key].toLowerCase() === input.toLowerCase(),
+            );
+
+            if (!providerKey) {
+                throw new Error(`Invalid weather provider: ${input}. Valid options are: ${Object.keys(WEATHER_PROVIDERS).join(', ')}`);
             }
 
-            extension_settings.accuweather.provider = provider;
+            extension_settings.accuweather.provider = providerKey;
             saveSettingsDebounced();
-            $('#accuweather_provider').val(provider);
+            $('#accuweather_provider').val(providerKey);
             updateApiKeyVisibility();
 
             if (!isTrueBoolean(args.quiet)) {
-                toastr.success(`Weather provider set to ${provider}`);
+                toastr.success(`Weather provider set to ${WEATHER_PROVIDERS[providerKey]}`);
             }
 
-            return provider;
+            return providerKey;
         },
         returns: 'the current weather provider name',
     }));
