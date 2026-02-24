@@ -73,6 +73,18 @@ Available arguments:
 
 - `units` - `metric` or `imperial`
 
+### Get or set weather provider
+
+`/weather-provider [provider]`
+
+If no argument is provided, returns the current provider name. If a provider name is given, switches to that provider and returns its name.
+
+Valid providers: `accuweather`, `openweathermap`, `wttr.in`
+
+Available arguments:
+
+- `quiet` - suppress the success toast notification on provider update. The default is `false`.
+
 ## Examples
 
 ```stscript
@@ -81,6 +93,14 @@ Available arguments:
 
 ```stscript
 /forecast units=imperial Tampa, FL
+```
+
+```stscript
+/weather-provider wttr.in
+```
+
+```stscript
+/weather-provider quiet=true openweathermap
 ```
 
 ## License

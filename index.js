@@ -3,6 +3,8 @@ import { isTrueBoolean, isFalseBoolean } from '../../../utils.js';
 import { saveSettingsDebounced } from '../../../../script.js';
 import { SlashCommand } from '../../../slash-commands/SlashCommand.js';
 import { ARGUMENT_TYPE, SlashCommandArgument, SlashCommandNamedArgument } from '../../../slash-commands/SlashCommandArgument.js';
+import { SlashCommandEnumValue, enumTypes } from '../../../slash-commands/SlashCommandEnumValue.js';
+import { commonEnumProviders } from '../../../slash-commands/SlashCommandCommonEnumsProvider.js';
 import { SlashCommandParser } from '../../../slash-commands/SlashCommandParser.js';
 
 /**
@@ -259,6 +261,12 @@ import { SlashCommandParser } from '../../../slash-commands/SlashCommandParser.j
  */
 
 const locationCache = new Map();
+
+const WEATHER_PROVIDERS = {
+    'accuweather': 'AccuWeather',
+    'openweathermap': 'OpenWeatherMap',
+    'wttr.in': 'wttr.in',
+};
 
 const defaultSettings = {
     provider: 'accuweather',
@@ -1047,6 +1055,58 @@ jQuery(async () => {
         ],
         callback: getWeatherCallback,
         returns: 'a string containing the weather information',
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'weather-provider',
+        helpString: 'Get or set the current weather API provider. If no argument is provided, returns the current provider name.',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({
+                description: 'provider name to set',
+                isRequired: false,
+                acceptsMultiple: false,
+                typeList: ARGUMENT_TYPE.STRING,
+                enumProvider: () => Object.entries(WEATHER_PROVIDERS).map(([key, name]) => new SlashCommandEnumValue(key, name, enumTypes.enum)),
+            }),
+        ],
+        namedArgumentList: [
+            SlashCommandNamedArgument.fromProps({
+                name: 'quiet',
+                description: 'Suppress the success toast notification on provider update.',
+                typeList: ARGUMENT_TYPE.BOOLEAN,
+                isRequired: false,
+                acceptsMultiple: false,
+                defaultValue: 'false',
+                enumList: commonEnumProviders.boolean('trueFalse')(),
+            }),
+        ],
+        callback: (args, value) => {
+            const input = value?.toString()?.trim();
+
+            if (!input) {
+                return extension_settings.accuweather.provider || 'accuweather';
+            }
+
+            const [providerKey, providerName] = Object.entries(WEATHER_PROVIDERS).find(([key, name]) =>
+                key === input || name.toLowerCase() === input.toLowerCase(),
+            ) || [null, null];
+
+            if (!providerKey) {
+                throw new Error(`Invalid weather provider: ${input}. Valid options are: ${Object.keys(WEATHER_PROVIDERS).join(', ')}`);
+            }
+
+            extension_settings.accuweather.provider = providerKey;
+            saveSettingsDebounced();
+            $('#accuweather_provider').val(providerKey);
+            updateApiKeyVisibility();
+
+            if (!isTrueBoolean(args.quiet)) {
+                toastr.success(`Weather provider set to ${providerName}`);
+            }
+
+            return providerKey;
+        },
+        returns: 'the current weather provider name',
     }));
 
     registerFunctionTools();
