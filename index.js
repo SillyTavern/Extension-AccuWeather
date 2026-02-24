@@ -840,7 +840,7 @@ jQuery(async () => {
             <div class="inline-drawer-content">
                 <div>
                     <label for="accuweather_provider">Weather Provider</label>
-                    <select id="accuweather_provider">
+                    <select id="accuweather_provider" class="text_pole">
                         <option value="accuweather">AccuWeather</option>
                         <option value="wttr.in">wttr.in</option>
                         <option value="openweathermap">OpenWeatherMap</option>
