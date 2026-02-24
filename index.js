@@ -4,6 +4,7 @@ import { saveSettingsDebounced } from '../../../../script.js';
 import { SlashCommand } from '../../../slash-commands/SlashCommand.js';
 import { ARGUMENT_TYPE, SlashCommandArgument, SlashCommandNamedArgument } from '../../../slash-commands/SlashCommandArgument.js';
 import { SlashCommandEnumValue, enumTypes } from '../../../slash-commands/SlashCommandEnumValue.js';
+import { commonEnumProviders } from '../../../slash-commands/SlashCommandCommonEnumsProvider.js';
 import { SlashCommandParser } from '../../../slash-commands/SlashCommandParser.js';
 
 /**
@@ -261,7 +262,11 @@ import { SlashCommandParser } from '../../../slash-commands/SlashCommandParser.j
 
 const locationCache = new Map();
 
-const WEATHER_PROVIDERS = ['accuweather', 'openweathermap', 'wttr.in'];
+const WEATHER_PROVIDERS = {
+    'accuweather': 'AccuWeather',
+    'openweathermap': 'OpenWeatherMap',
+    'wttr.in': 'wttr.in',
+};
 
 const defaultSettings = {
     provider: 'accuweather',
@@ -1061,7 +1066,7 @@ jQuery(async () => {
                 isRequired: false,
                 acceptsMultiple: false,
                 typeList: ARGUMENT_TYPE.STRING,
-                enumProvider: () => WEATHER_PROVIDERS.map(p => new SlashCommandEnumValue(p, null, enumTypes.enum)),
+                enumProvider: () => Object.entries(WEATHER_PROVIDERS).map(([key, name]) => new SlashCommandEnumValue(key, name, enumTypes.enum)),
             }),
         ],
         namedArgumentList: [
@@ -1072,17 +1077,18 @@ jQuery(async () => {
                 isRequired: false,
                 acceptsMultiple: false,
                 defaultValue: 'false',
+                enumList: commonEnumProviders.boolean('trueFalse')(),
             }),
         ],
         callback: (args, value) => {
-            const provider = value?.trim();
+            const provider = value?.toString()?.trim();
 
             if (!provider) {
                 return extension_settings.accuweather.provider || 'accuweather';
             }
 
-            if (!WEATHER_PROVIDERS.includes(provider)) {
-                throw new Error(`Invalid weather provider: ${provider}. Valid options are: ${WEATHER_PROVIDERS.join(', ')}`);
+            if (!Object.keys(WEATHER_PROVIDERS).includes(provider)) {
+                throw new Error(`Invalid weather provider: ${provider}. Valid options are: ${Object.keys(WEATHER_PROVIDERS).join(', ')}`);
             }
 
             extension_settings.accuweather.provider = provider;
