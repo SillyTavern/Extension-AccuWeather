@@ -1109,5 +1109,98 @@ jQuery(async () => {
         returns: 'the current weather provider name',
     }));
 
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'weather-location',
+        helpString: 'Get or set the preferred weather location. If no argument is provided, returns the current preferred location.',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({
+                description: 'preferred location to set',
+                isRequired: false,
+                acceptsMultiple: false,
+                typeList: ARGUMENT_TYPE.STRING,
+            }),
+        ],
+        namedArgumentList: [
+            SlashCommandNamedArgument.fromProps({
+                name: 'quiet',
+                description: 'Suppress the success toast notification on location update.',
+                typeList: ARGUMENT_TYPE.BOOLEAN,
+                isRequired: false,
+                acceptsMultiple: false,
+                defaultValue: 'false',
+                enumList: commonEnumProviders.boolean('trueFalse')(),
+            }),
+        ],
+        callback: (args, value) => {
+            const input = value?.toString()?.trim();
+
+            if (!input) {
+                return extension_settings.accuweather.preferredLocation || '';
+            }
+
+            extension_settings.accuweather.preferredLocation = input;
+            saveSettingsDebounced();
+            $('#accuweather_preferred_location').val(input);
+
+            if (!isTrueBoolean(args.quiet)) {
+                toastr.success(`Preferred location set to ${input}`);
+            }
+
+            return input;
+        },
+        returns: 'the current preferred location',
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'weather-units',
+        helpString: 'Get or set the preferred weather units. If no argument is provided, returns the current preferred units.',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({
+                description: 'preferred units to set',
+                isRequired: false,
+                acceptsMultiple: false,
+                typeList: ARGUMENT_TYPE.STRING,
+                enumList: [
+                    new SlashCommandEnumValue('metric', 'Metric', enumTypes.enum),
+                    new SlashCommandEnumValue('imperial', 'Imperial', enumTypes.enum),
+                ],
+            }),
+        ],
+        namedArgumentList: [
+            SlashCommandNamedArgument.fromProps({
+                name: 'quiet',
+                description: 'Suppress the success toast notification on units update.',
+                typeList: ARGUMENT_TYPE.BOOLEAN,
+                isRequired: false,
+                acceptsMultiple: false,
+                defaultValue: 'false',
+                enumList: commonEnumProviders.boolean('trueFalse')(),
+            }),
+        ],
+        callback: (args, value) => {
+            const input = value?.toString()?.trim()?.toLowerCase();
+
+            if (!input) {
+                return extension_settings.accuweather.units || 'metric';
+            }
+
+            const validUnits = ['metric', 'imperial'];
+            if (!validUnits.includes(input)) {
+                throw new Error(`Invalid units: ${input}. Valid options are: ${validUnits.join(', ')}`);
+            }
+
+            extension_settings.accuweather.units = input;
+            saveSettingsDebounced();
+            $('#accuweather_units').val(input);
+
+            if (!isTrueBoolean(args.quiet)) {
+                toastr.success(`Weather units set to ${input}`);
+            }
+
+            return input;
+        },
+        returns: 'the current preferred units',
+    }));
+
     registerFunctionTools();
 });
