@@ -841,9 +841,9 @@ jQuery(async () => {
                 <div>
                     <label for="accuweather_provider">Weather Provider</label>
                     <select id="accuweather_provider" class="text_pole">
-                        <option value="accuweather">AccuWeather</option>
-                        <option value="wttr.in">wttr.in</option>
-                        <option value="openweathermap">OpenWeatherMap</option>
+                        <option value="accuweather">🔐 AccuWeather</option>
+                        <option value="openweathermap">🔐 OpenWeatherMap</option>
+                        <option value="wttr.in">🆓 wttr.in</option>
                     </select>
                 </div>
                 <div id="accuweather_api_key_block">
