@@ -85,6 +85,28 @@ Available arguments:
 
 - `quiet` - suppress the success toast notification on provider update. The default is `false`.
 
+### Get or set preferred location
+
+`/weather-location [location]`
+
+If no argument is provided, returns the current preferred location. If a location is given, sets the preferred location and returns it.
+
+Available arguments:
+
+- `quiet` - suppress the success toast notification on location update. The default is `false`.
+
+### Get or set preferred units
+
+`/weather-units [units]`
+
+If no argument is provided, returns the current preferred units. If units are given, sets the preferred units and returns them.
+
+Valid units: `metric`, `imperial`
+
+Available arguments:
+
+- `quiet` - suppress the success toast notification on units update. The default is `false`.
+
 ## Examples
 
 ```stscript
@@ -101,6 +123,14 @@ Available arguments:
 
 ```stscript
 /weather-provider quiet=true openweathermap
+```
+
+```stscript
+/weather-location London, UK
+```
+
+```stscript
+/weather-units imperial
 ```
 
 ## License
