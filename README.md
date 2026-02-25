@@ -7,6 +7,7 @@ Supports multiple weather API providers:
 - **AccuWeather** (default) — Requires a free API key.
 - **wttr.in** — No API key required.
 - **OpenWeatherMap** — Requires a free API key.
+- **Open-Meteo** — No API key required.
 
 ## Getting API Keys
 
@@ -29,6 +30,10 @@ No API key required.
 The free tier includes 1,000 calls per day.
 
 > **Note:** The API key may take up to ~2 hours to become active after registration and email confirmation.
+
+### Open-Meteo
+
+No API key required. Uses the [Open-Meteo API](https://open-meteo.com/en/docs) which is free for non-commercial use.
 
 ## Installation
 
@@ -79,7 +84,7 @@ Available arguments:
 
 If no argument is provided, returns the current provider name. If a provider name is given, switches to that provider and returns its name.
 
-Valid providers: `accuweather`, `openweathermap`, `wttr.in`
+Valid providers: `accuweather`, `openweathermap`, `open-meteo`, `wttr.in`
 
 Available arguments:
 
