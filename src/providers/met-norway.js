@@ -1,6 +1,6 @@
 import { extension_settings } from '../../../../../extensions.js';
 import { isTrueBoolean, isFalseBoolean } from '../../../../../utils.js';
-import { degreesToDirection } from '../utils.js';
+import { degreesToDirection, cToF, msToMph, mmToIn } from '../utils.js';
 
 const metNorwayGeoCache = new Map();
 
@@ -85,33 +85,6 @@ async function fetchMetNorwayForecast(location) {
     });
     if (!response.ok) throw new Error('Failed to get weather from MET Norway');
     return await response.json();
-}
-
-/**
- * Convert Celsius to Fahrenheit.
- * @param {number} celsius
- * @returns {number}
- */
-function cToF(celsius) {
-    return celsius * 9 / 5 + 32;
-}
-
-/**
- * Convert m/s to mph.
- * @param {number} ms
- * @returns {number}
- */
-function msToMph(ms) {
-    return ms * 2.23694;
-}
-
-/**
- * Convert mm to inches.
- * @param {number} mm
- * @returns {number}
- */
-function mmToIn(mm) {
-    return mm / 25.4;
 }
 
 function parseMetNorwayWeatherData(data, args) {
