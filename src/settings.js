@@ -7,6 +7,7 @@ export const WEATHER_PROVIDERS = {
     'openweathermap': 'OpenWeatherMap',
     'open-meteo': 'Open-Meteo',
     'wttr.in': 'wttr.in',
+    'met-norway': 'MET Norway',
 };
 
 export const defaultSettings = {
@@ -51,6 +52,7 @@ export function initSettingsUI() {
                         <option value="openweathermap">🔐 OpenWeatherMap</option>
                         <option value="open-meteo">🆓 Open-Meteo</option>
                         <option value="wttr.in">🆓 wttr.in</option>
+                        <option value="met-norway">🆓 MET Norway</option>
                     </select>
                 </div>
                 <div id="accuweather_api_key_block">

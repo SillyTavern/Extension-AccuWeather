@@ -3,6 +3,7 @@ import * as accuweather from './accuweather.js';
 import * as openweathermap from './openweathermap.js';
 import * as openMeteo from './open-meteo.js';
 import * as wttrIn from './wttr-in.js';
+import * as metNorway from './met-norway.js';
 
 /**
  * @typedef {Object} WeatherProvider
@@ -16,6 +17,7 @@ const providers = {
     'openweathermap': openweathermap,
     'open-meteo': openMeteo,
     'wttr.in': wttrIn,
+    'met-norway': metNorway,
 };
 
 /**
