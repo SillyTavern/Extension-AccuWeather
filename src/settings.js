@@ -63,7 +63,7 @@ export function initSettingsUI() {
                 </div>
                 <div>
                     <label for="accuweather_preferred_location">Preferred Location</label>
-                    <input id="accuweather_preferred_location" class="text_pole" type="text" placeholder="i.e. Bucharest, Romania" />
+                    <input id="accuweather_preferred_location" class="text_pole" type="text" placeholder="e.g. Bucharest, Romania" />
                 </div>
                 <div>
                     <label for="accuweather_units">Units</label>
