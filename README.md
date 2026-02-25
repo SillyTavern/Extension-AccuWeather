@@ -5,9 +5,10 @@ Adds a slash command that returns the current weather for a given location.
 Supports multiple weather API providers:
 
 - **AccuWeather** (default) — Requires a free API key.
-- **wttr.in** — No API key required.
-- **OpenWeatherMap** — Requires a free API key.
+- **MET Norway** — No API key required.
 - **Open-Meteo** — No API key required.
+- **OpenWeatherMap** — Requires a free API key.
+- **wttr.in** — No API key required.
 
 ## Getting API Keys
 
@@ -18,9 +19,15 @@ Supports multiple weather API providers:
 
 It's free for 50 calls per day.
 
-### wttr.in
+### MET Norway
 
-No API key required.
+No API key required. Uses the [MET Norway Locationforecast 2.0 API](https://api.met.no/weatherapi/locationforecast/2.0/documentation) which is free for all use.
+
+> **Note:** MET Norway does not provide a "feels like" temperature. When `feelslike` is requested, dew point is shown instead as the closest available proxy.
+
+### Open-Meteo
+
+No API key required. Uses the [Open-Meteo API](https://open-meteo.com/en/docs) which is free for non-commercial use.
 
 ### OpenWeatherMap
 
@@ -31,9 +38,9 @@ The free tier includes 1,000 calls per day.
 
 > **Note:** The API key may take up to ~2 hours to become active after registration and email confirmation.
 
-### Open-Meteo
+### wttr.in
 
-No API key required. Uses the [Open-Meteo API](https://open-meteo.com/en/docs) which is free for non-commercial use.
+No API key required.
 
 ## Installation
 
@@ -84,7 +91,7 @@ Available arguments:
 
 If no argument is provided, returns the current provider name. If a provider name is given, switches to that provider and returns its name.
 
-Valid providers: `accuweather`, `openweathermap`, `open-meteo`, `wttr.in`
+Valid providers: `accuweather`, `met-norway`, `open-meteo`, `openweathermap`, `wttr.in`
 
 Available arguments:
 
