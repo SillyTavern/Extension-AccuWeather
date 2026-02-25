@@ -4,10 +4,10 @@ import { registerFunctionTools } from './functions.js';
 
 export const WEATHER_PROVIDERS = {
     'accuweather': 'AccuWeather',
-    'openweathermap': 'OpenWeatherMap',
-    'open-meteo': 'Open-Meteo',
-    'wttr.in': 'wttr.in',
     'met-norway': 'MET Norway',
+    'open-meteo': 'Open-Meteo',
+    'openweathermap': 'OpenWeatherMap',
+    'wttr.in': 'wttr.in',
 };
 
 export const defaultSettings = {
@@ -49,10 +49,10 @@ export function initSettingsUI() {
                     <label for="accuweather_provider">Weather Provider</label>
                     <select id="accuweather_provider" class="text_pole">
                         <option value="accuweather">🔐 AccuWeather</option>
-                        <option value="openweathermap">🔐 OpenWeatherMap</option>
-                        <option value="open-meteo">🆓 Open-Meteo</option>
-                        <option value="wttr.in">🆓 wttr.in</option>
                         <option value="met-norway">🆓 MET Norway</option>
+                        <option value="open-meteo">🆓 Open-Meteo</option>
+                        <option value="openweathermap">🔐 OpenWeatherMap</option>
+                        <option value="wttr.in">🆓 wttr.in</option>
                     </select>
                 </div>
                 <div id="accuweather_api_key_block">
