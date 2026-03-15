@@ -1,4 +1,5 @@
-import { extension_settings } from '../../../../extensions.js';
+import { extension_settings, findExtension, deleteExtension } from '../../../../extensions.js';
+import { Popup } from '../../../../popup.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
 import { registerFunctionTools } from './functions.js';
 
@@ -34,6 +35,25 @@ export function updateApiKeyVisibility() {
     const provider = extension_settings.accuweather.provider || 'accuweather';
     $('#accuweather_api_key_block').toggle(provider === 'accuweather');
     $('#openweathermap_api_key_block').toggle(provider === 'openweathermap');
+}
+
+export function checkForExtensionConflicts() {
+    const storageKey = 'weatherExtensionConflictChecked';
+    if (localStorage.getItem(storageKey)) {
+        return;
+    }
+    localStorage.setItem(storageKey, '1');
+    if (findExtension('Extension-AccuWeather') && findExtension('Extension-Weather')) {
+        Popup.show.confirm(
+            'Extension Conflict Detected',
+            'Found an outdated version of the Weather extension (Extension-AccuWeather). It is recommended to uninstall the old extension to avoid conflicts with the updated Weather extension. Do you want to uninstall the old AccuWeather extension now?',
+        ).then((result) => {
+            if (!result) {
+                return;
+            }
+            deleteExtension('Extension-AccuWeather');
+        });
+    }
 }
 
 export function initSettingsUI() {
